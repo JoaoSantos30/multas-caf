@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Caixinha de Multas · Académico do Fundão</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<style>
+:root{--bg:#f6f5f1;--card:#fff;--text:#16161a;--muted:#6b6b73;--line:#e3e1da;--accent:#111;--gold:#c9a227;--red:#b3261e;--green:#1e7a3c}
+@media (prefers-color-scheme:dark){:root{--bg:#121214;--card:#1c1c20;--text:#f2f2f2;--muted:#9a9aa3;--line:#2e2e34;--accent:#f2f2f2;--gold:#e0b93a;--red:#ff6b61;--green:#4cc27a}}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--text);line-height:1.45}
+header{background:#111;color:#fff;padding:20px 16px;border-bottom:4px solid var(--gold)}
+.hin{max-width:820px;margin:0 auto;display:flex;justify-content:space-between;align-items:center;gap:10px}
+header h1{margin:0;font-size:1.3rem}header p{margin:2px 0 0;color:#bbb;font-size:.85rem}
+main{max-width:820px;margin:0 auto;padding:16px}
+button,input,select,textarea{font:inherit;padding:9px 12px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--text)}
+button{cursor:pointer;background:var(--accent);color:var(--bg);border:none;font-weight:600}
+button.ghost{background:transparent;color:var(--text);border:1px solid var(--line)}
+header button.ghost{color:#fff;border-color:#555}
+button.small{padding:4px 9px;font-size:.78rem}
+button.danger{background:var(--red);color:#fff}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:14px}
+.card h2{margin:0 0 12px;font-size:1.05rem}
+form{display:grid;gap:10px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:560px){.row{grid-template-columns:1fr}}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;text-align:center}
+.stat b{display:block;font-size:1.3rem}.stat span{color:var(--muted);font-size:.78rem}
+.toolbar{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.toolbar input{flex:1;min-width:140px}
+.p{border-top:1px solid var(--line);padding:10px 0;cursor:pointer}
+.p:first-child{border-top:none}
+.ph{display:flex;align-items:center;gap:10px}
+.rk{width:26px;color:var(--muted);font-weight:700;text-align:center}
+.nm{flex:1;min-width:0}.nm small{color:var(--muted)}
+.bar{height:5px;border-radius:3px;background:var(--line);margin-top:5px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--gold)}
+.amount{font-weight:700;white-space:nowrap;text-align:right}
+.paid{color:var(--green)}.unpaid{color:var(--red)}
+.fines{margin:8px 0 0 36px;cursor:default}
+.fine{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 0;border-top:1px dashed var(--line);font-size:.92rem}
+.fine small{color:var(--muted)}.fine .info{flex:1;min-width:0}
+.actions{display:flex;gap:5px}
+.msg{min-height:1.2em;font-size:.88rem;color:var(--red)}
+.hidden{display:none}.empty{color:var(--muted);text-align:center;padding:10px}
+.rules{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:1px solid var(--line);border-radius:20px;padding:4px 12px;font-size:.85rem}
+.chip b{color:var(--gold)}.chip button{padding:0 0 0 6px;background:none;color:var(--red);font-size:.9rem}
+textarea{min-height:90px;font-family:monospace;font-size:.82rem}
+details summary{cursor:pointer;font-weight:600;margin-bottom:8px}
+</style>
+</head>
+<body>
+<header><div class="hin">
+  <div><h1>🟡⚫ Caixinha de Multas</h1><p>Clube Académico do Fundão</p></div>
+  <button class="ghost small" id="adminBtn">Admin</button>
+</div></header>
+
+<main>
+  <div class="card hidden" id="loginCard">
+    <h2>Entrada do administrador</h2>
+    <form id="loginForm">
+      <div class="row"><input id="email" type="email" placeholder="Email" required autocomplete="username">
+      <input id="password" type="password" placeholder="Password" required autocomplete="current-password"></div>
+      <button>Entrar</button><div class="msg" id="loginMsg"></div>
+    </form>
+  </div>
+
+  <!-- PAINEL ADMIN -->
+  <div id="adminPanel" class="hidden">
+    <div class="card">
+      <h2>Adicionar multa</h2>
+      <form id="fineForm">
+        <div class="row">
+          <select id="fPlayer" required></select>
+          <select id="fRule"></select>
+        </div>
+        <input id="fReason" placeholder="Motivo" required>
+        <div class="row"><input id="fAmount" type="number" step="0.01" min="0" placeholder="Valor (€)" required>
+        <input id="fDate" type="date" required></div>
+        <button>Adicionar multa</button>
+      </form>
+    </div>
+    <div class="card">
+      <details><summary>Jogadores e tabela de multas</summary>
+        <form id="playerAddForm" class="row"><input id="pName" placeholder="Nome do jogador" required><button>Adicionar jogador</button></form>
+        <hr style="border:none;border-top:1px solid var(--line);margin:14px 0">
+        <form id="ruleForm" class="row"><input id="rReason" placeholder="Novo tipo de multa" required>
+          <div class="row"><input id="rAmount" type="number" step="0.01" min="0" placeholder="Valor (€)" required><button>Guardar</button></div></form>
+        <div class="rules" id="rulesList" style="margin-top:12px"></div>
+      </details>
+    </div>
+    <div class="card">
+      <details><summary>Importar do Excel / Exportar</summary>
+        <p style="margin-top:0;font-size:.88rem;color:var(--muted)">Cola linhas do Excel com as colunas: <b>Nome, Motivo, Valor, Data, Paga (s/n)</b>. A data pode ser DD/MM/AAAA. Jogadores novos são criados automaticamente.</p>
+        <form id="importForm"><textarea id="importText" placeholder="João Silva&#9;Atraso ao treino&#9;1&#9;12/10/2026&#9;n"></textarea>
+        <div class="row"><button>Importar</button><button type="button" class="ghost" id="exportBtn">Exportar CSV</button></div></form>
+      </details>
+    </div>
+    <div class="msg" id="adminMsg"></div>
+  </div>
+
+  <!-- VISTA PÚBLICA -->
+  <div class="stats">
+    <div class="stat"><b class="unpaid" id="sOwed">–</b><span>Em dívida</span></div>
+    <div class="stat"><b class="paid" id="sPaid">–</b><span>Já recebido</span></div>
+    <div class="stat"><b id="sCount">–</b><span>Multas dadas</span></div>
+  </div>
+
+  <div class="card">
+    <h2>Plantel</h2>
+    <div class="toolbar">
+      <input id="search" placeholder="Pesquisar jogador...">
+      <select id="filter"><option value="all">Todos</option><option value="owing">Com dívida</option><option value="clear">Sem dívida</option></select>
+    </div>
+    <div id="list"><div class="empty">A carregar...</div></div>
+  </div>
+
+  <div class="card"><h2>Tabela de multas</h2><div class="rules" id="publicRules"></div></div>
+</main>
+
+<script>
+// ====== CONFIGURAÇÃO (cola aqui os teus dados do Supabase) ======
+const SUPABASE_URL = 'https://nemtizjsqjrlignlpezc.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_J0ElacFBc74C5nBKPHQtow_Y4NJvUHE';
+// ================================================================
+
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const eur = n => Number(n).toLocaleString('pt-PT',{style:'currency',currency:'EUR'});
+const dt = d => new Date(d + 'T00:00:00').toLocaleDateString('pt-PT');
+let S = { players:[], fines:[], rules:[], admin:false, open:new Set() };
+
+async function load(){
+  const [p,f,r] = await Promise.all([
+    sb.from('players').select('*').order('name'),
+    sb.from('fines').select('*').order('date',{ascending:false}),
+    sb.from('rules').select('*').order('reason')
+  ]);
+  if (p.error||f.error||r.error){ $('list').innerHTML='<div class="empty">Erro a carregar dados. Verifica a configuração.</div>'; return; }
+  S.players=p.data; S.fines=f.data; S.rules=r.data;
+  render();
+}
+
+function render(){
+  const sum = a => a.reduce((s,f)=>s+Number(f.amount),0);
+  $('sOwed').textContent = eur(sum(S.fines.filter(f=>!f.paid)));
+  $('sPaid').textContent = eur(sum(S.fines.filter(f=>f.paid)));
+  $('sCount').textContent = S.fines.length;
+
+  const q = $('search').value.toLowerCase(), flt = $('filter').value;
+  let rows = S.players.map(p=>{
+    const mine = S.fines.filter(f=>f.player_id===p.id);
+    return { p, mine, owed:sum(mine.filter(f=>!f.paid)), paid:sum(mine.filter(f=>f.paid)) };
+  }).filter(r=>r.p.name.toLowerCase().includes(q) && (flt==='all' || (flt==='owing'?r.owed>0:r.owed===0)));
+  rows.sort((a,b)=>b.owed-a.owed || (b.paid-a.paid) || a.p.name.localeCompare(b.p.name));
+  const max = Math.max(1,...rows.map(r=>r.owed));
+
+  $('list').innerHTML = rows.map((r,i)=>`
+    <div class="p" data-id="${r.p.id}">
+      <div class="ph"><div class="rk">${i+1}</div>
+        <div class="nm"><strong>${esc(r.p.name)}</strong><br><small>${r.mine.length} multa(s) · pago ${eur(r.paid)}</small>
+          <div class="bar"><i style="width:${r.owed/max*100}%"></i></div></div>
+        <div class="amount ${r.owed>0?'unpaid':'paid'}">${eur(r.owed)}${S.admin?`<br><button class="danger small" data-delp="${r.p.id}">Apagar</button>`:''}</div>
+      </div>
+      ${S.open.has(r.p.id)?`<div class="fines">${r.mine.length?r.mine.map(f=>`
+        <div class="fine"><div class="info">${esc(f.reason)}<br><small>${dt(f.date)}</small></div>
+          <div class="amount ${f.paid?'paid':'unpaid'}">${eur(f.amount)}<br><small>${f.paid?'Paga':'Por pagar'}</small></div>
+          ${S.admin?`<div class="actions"><button class="ghost small" data-pay="${f.id}" data-v="${f.paid}">${f.paid?'Desmarcar':'Paga'}</button><button class="danger small" data-del="${f.id}">✕</button></div>`:''}
+        </div>`).join(''):'<div class="empty">Sem multas 🎉</div>'}</div>`:''}
+    </div>`).join('') || '<div class="empty">Nenhum jogador encontrado.</div>';
+
+  $('publicRules').innerHTML = S.rules.map(r=>`<span class="chip">${esc(r.reason)} <b>${eur(r.amount)}</b></span>`).join('') || '<div class="empty">Ainda sem tabela.</div>';
+  if (S.admin){
+    $('fPlayer').innerHTML = '<option value="">Jogador...</option>'+S.players.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('');
+    $('fRule').innerHTML = '<option value="">Multa predefinida...</option>'+S.rules.map(r=>`<option value="${r.id}">${esc(r.reason)} (${eur(r.amount)})</option>`).join('');
+    $('rulesList').innerHTML = S.rules.map(r=>`<span class="chip">${esc(r.reason)} <b>${eur(r.amount)}</b><button data-delr="${r.id}">✕</button></span>`).join('');
+  }
+}
+
+$('list').onclick = async e=>{
+  const b = e.target.closest('button');
+  if (b){
+    if (b.dataset.pay) await sb.from('fines').update({paid:b.dataset.v!=='true'}).eq('id',b.dataset.pay);
+    else if (b.dataset.del){ if(!confirm('Remover esta multa?'))return; await sb.from('fines').delete().eq('id',b.dataset.del); }
+    else if (b.dataset.delp){ if(!confirm('Apagar jogador e todas as suas multas?'))return; await sb.from('players').delete().eq('id',b.dataset.delp); }
+    return load();
+  }
+  const row = e.target.closest('.p'); if(!row||e.target.closest('.fines'))return;
+  S.open.has(row.dataset.id)?S.open.delete(row.dataset.id):S.open.add(row.dataset.id); render();
+};
+$('search').oninput = render; $('filter').onchange = render;
+
+// ---- Admin ----
+function setAdmin(on){
+  S.admin=on; $('adminPanel').classList.toggle('hidden',!on); $('loginCard').classList.add('hidden');
+  $('adminBtn').textContent = on?'Sair':'Admin'; render();
+}
+$('adminBtn').onclick = async ()=>{
+  if (S.admin){ await sb.auth.signOut(); setAdmin(false); }
+  else $('loginCard').classList.toggle('hidden');
+};
+$('loginForm').onsubmit = async e=>{
+  e.preventDefault();
+  const {error} = await sb.auth.signInWithPassword({email:$('email').value,password:$('password').value});
+  if (error){ $('loginMsg').textContent='Email ou password incorretos.'; return; }
+  $('password').value=''; $('loginMsg').textContent=''; setAdmin(true);
+};
+$('fRule').onchange = ()=>{
+  const r=S.rules.find(x=>x.id===$('fRule').value); if(!r)return;
+  $('fReason').value=r.reason; $('fAmount').value=r.amount;
+};
+const msg = t=>{ $('adminMsg').textContent=t; };
+$('fineForm').onsubmit = async e=>{
+  e.preventDefault();
+  const {error}=await sb.from('fines').insert({player_id:$('fPlayer').value,reason:$('fReason').value.trim(),amount:$('fAmount').value,date:$('fDate').value});
+  if (error) return msg('Erro ao adicionar multa.');
+  msg(''); S.open.add($('fPlayer').value); $('fReason').value=''; $('fAmount').value=''; $('fRule').value=''; load();
+};
+$('playerAddForm').onsubmit = async e=>{
+  e.preventDefault();
+  const {error}=await sb.from('players').insert({name:$('pName').value.trim()});
+  if (error) return msg('Erro (o nome já existe?).');
+  msg(''); $('pName').value=''; load();
+};
+$('ruleForm').onsubmit = async e=>{
+  e.preventDefault();
+  const {error}=await sb.from('rules').upsert({reason:$('rReason').value.trim(),amount:$('rAmount').value},{onConflict:'reason'});
+  if (error) return msg('Erro ao guardar multa predefinida.');
+  msg(''); $('rReason').value=''; $('rAmount').value=''; load();
+};
+$('rulesList').onclick = async e=>{
+  const b=e.target.closest('button'); if(!b)return;
+  await sb.from('rules').delete().eq('id',b.dataset.delr); load();
+};
+
+// ---- Importar / Exportar ----
+const parseDate = s=>{ s=s.trim(); const m=s.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})$/);
+  return m?`${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`:(/^\d{4}-\d{2}-\d{2}$/.test(s)?s:null); };
+$('importForm').onsubmit = async e=>{
+  e.preventDefault();
+  const lines=$('importText').value.split('\n').map(l=>l.trim()).filter(Boolean), items=[], bad=[];
+  lines.forEach((l,i)=>{
+    const [n,r,v,d,pg]=l.split(/[;\t]/).map(x=>(x||'').trim());
+    const amount=parseFloat((v||'').replace(',','.')), date=d?parseDate(d):new Date().toISOString().slice(0,10);
+    if(!n||!r||isNaN(amount)||!date) bad.push(i+1); else items.push({n,r,amount,date,paid:/^(s|sim|y|1|true)/i.test(pg||'')});
+  });
+  if (bad.length) return msg('Linhas inválidas: '+bad.join(', ')+'. Nada foi importado.');
+  const names=[...new Set(items.map(x=>x.n))].filter(n=>!S.players.some(p=>p.name.toLowerCase()===n.toLowerCase()));
+  if (names.length){ const {error}=await sb.from('players').insert(names.map(name=>({name}))); if(error) return msg('Erro a criar jogadores.'); }
+  const {data:pl}=await sb.from('players').select('*');
+  const rows=items.map(x=>({player_id:pl.find(p=>p.name.toLowerCase()===x.n.toLowerCase()).id,reason:x.r,amount:x.amount,date:x.date,paid:x.paid}));
+  const {error}=await sb.from('fines').insert(rows);
+  if (error) return msg('Erro ao importar multas.');
+  $('importText').value=''; msg(''); alert(rows.length+' multas importadas.'); load();
+};
+$('exportBtn').onclick = ()=>{
+  const nm=id=>(S.players.find(p=>p.id===id)||{}).name||'';
+  const csv=['Nome;Motivo;Valor;Data;Paga',...S.fines.map(f=>[nm(f.player_id),f.reason,String(f.amount).replace('.',','),dt(f.date),f.paid?'s':'n'].join(';'))].join('\n');
+  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob(['\ufeff'+csv],{type:'text/csv'}));
+  a.download='multas.csv'; a.click();
+};
+
+$('fDate').value = new Date().toISOString().slice(0,10);
+sb.auth.getSession().then(({data})=>{ if(data.session) setAdmin(true); });
+load();
+</script>
+</body>
+</html>
