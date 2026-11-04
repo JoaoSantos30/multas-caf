@@ -50,6 +50,8 @@ form{display:grid;gap:10px}
 .chip b{color:var(--gold)}.chip button{padding:0 0 0 6px;background:none;color:var(--red);font-size:.9rem}
 textarea{min-height:90px;font-family:monospace;font-size:.82rem}
 details summary{cursor:pointer;font-weight:600;margin-bottom:8px}
+.tag{font-size:.68rem;border:1px solid var(--line);border-radius:10px;padding:1px 7px;margin-left:6px;color:var(--muted);font-weight:500}
+label{font-size:.9rem;display:flex;gap:8px;align-items:center}label input{padding:0}
 </style>
 </head>
 <body>
@@ -78,6 +80,8 @@ details summary{cursor:pointer;font-weight:600;margin-bottom:8px}
           <select id="fRule"></select>
         </div>
         <input id="fReason" placeholder="Motivo" required>
+        <input id="fMin" type="number" min="1" placeholder="Minutos de atraso" class="hidden">
+        <label><input type="checkbox" id="fGame"> ⚽ Dia de jogo (multa a dobrar)</label>
         <div class="row"><input id="fAmount" type="number" step="0.01" min="0" placeholder="Valor (€)" required>
         <input id="fDate" type="date" required></div>
         <button>Adicionar multa</button>
@@ -85,10 +89,11 @@ details summary{cursor:pointer;font-weight:600;margin-bottom:8px}
     </div>
     <div class="card">
       <details><summary>Jogadores e tabela de multas</summary>
-        <form id="playerAddForm" class="row"><input id="pName" placeholder="Nome do jogador" required><button>Adicionar jogador</button></form>
+        <button type="button" class="ghost" id="quotaBtn" style="margin-bottom:12px">Lançar quota desta semana (0,50 €)</button>
+        <form id="playerAddForm"><div class="row"><input id="pName" placeholder="Nome" required><select id="pRole"><option value="jogador">Jogador</option><option value="tecnico">Treinador</option></select></div><button>Adicionar</button></form>
         <hr style="border:none;border-top:1px solid var(--line);margin:14px 0">
         <form id="ruleForm" class="row"><input id="rReason" placeholder="Novo tipo de multa" required>
-          <div class="row"><input id="rAmount" type="number" step="0.01" min="0" placeholder="Valor (€)" required><button>Guardar</button></div></form>
+          <div class="row"><input id="rAmount" type="number" step="0.01" min="0" placeholder="Valor (€)" required><button>Guardar</button></div><label><input type="checkbox" id="rMin"> Cobrado por minuto</label></form>
         <div class="rules" id="rulesList" style="margin-top:12px"></div>
       </details>
     </div>
@@ -121,12 +126,8 @@ details summary{cursor:pointer;font-weight:600;margin-bottom:8px}
   <div class="card"><h2>Tabela de multas</h2><div class="rules" id="publicRules"></div></div>
 </main>
 
+<script src="config.js"></script>
 <script>
-// ====== CONFIGURAÇÃO (cola aqui os teus dados do Supabase) ======
-const SUPABASE_URL = 'https://nemtizjsqjrlignlpezc.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_J0ElacFBc74C5nBKPHQtow_Y4NJvUHE';
-// ================================================================
-
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -156,28 +157,28 @@ function render(){
     const mine = S.fines.filter(f=>f.player_id===p.id);
     return { p, mine, owed:sum(mine.filter(f=>!f.paid)), paid:sum(mine.filter(f=>f.paid)) };
   }).filter(r=>r.p.name.toLowerCase().includes(q) && (flt==='all' || (flt==='owing'?r.owed>0:r.owed===0)));
-  rows.sort((a,b)=>b.owed-a.owed || (b.paid-a.paid) || a.p.name.localeCompare(b.p.name));
+  rows.sort((a,b)=>Number(b.p.active)-Number(a.p.active) || b.owed-a.owed || (b.paid-a.paid) || a.p.name.localeCompare(b.p.name));
   const max = Math.max(1,...rows.map(r=>r.owed));
 
   $('list').innerHTML = rows.map((r,i)=>`
-    <div class="p" data-id="${r.p.id}">
+    <div class="p" data-id="${r.p.id}" style="${r.p.active?'':'opacity:.6'}">
       <div class="ph"><div class="rk">${i+1}</div>
-        <div class="nm"><strong>${esc(r.p.name)}</strong><br><small>${r.mine.length} multa(s) · pago ${eur(r.paid)}</small>
+        <div class="nm"><strong>${esc(r.p.name)}</strong>${r.p.role==='tecnico'?'<span class="tag">Treinador</span>':''}${r.p.active?'':'<span class="tag">Saiu</span>'}<br><small>${r.mine.length} multa(s) · pago ${eur(r.paid)}</small>
           <div class="bar"><i style="width:${r.owed/max*100}%"></i></div></div>
-        <div class="amount ${r.owed>0?'unpaid':'paid'}">${eur(r.owed)}${S.admin?`<br><button class="danger small" data-delp="${r.p.id}">Apagar</button>`:''}</div>
+        <div class="amount ${r.owed>0?'unpaid':'paid'}">${eur(r.owed)}${S.admin?`<br><button class="ghost small" data-act="${r.p.id}" data-v="${r.p.active}">${r.p.active?'Saiu':'Reativar'}</button> <button class="danger small" data-delp="${r.p.id}">Apagar</button>`:''}</div>
       </div>
       ${S.open.has(r.p.id)?`<div class="fines">${r.mine.length?r.mine.map(f=>`
-        <div class="fine"><div class="info">${esc(f.reason)}<br><small>${dt(f.date)}</small></div>
+        <div class="fine"><div class="info">${esc(f.reason)}${f.game_day?' ⚽×2':''}<br><small>${dt(f.date)}</small></div>
           <div class="amount ${f.paid?'paid':'unpaid'}">${eur(f.amount)}<br><small>${f.paid?'Paga':'Por pagar'}</small></div>
           ${S.admin?`<div class="actions"><button class="ghost small" data-pay="${f.id}" data-v="${f.paid}">${f.paid?'Desmarcar':'Paga'}</button><button class="danger small" data-del="${f.id}">✕</button></div>`:''}
         </div>`).join(''):'<div class="empty">Sem multas 🎉</div>'}</div>`:''}
     </div>`).join('') || '<div class="empty">Nenhum jogador encontrado.</div>';
 
-  $('publicRules').innerHTML = S.rules.map(r=>`<span class="chip">${esc(r.reason)} <b>${eur(r.amount)}</b></span>`).join('') || '<div class="empty">Ainda sem tabela.</div>';
+  $('publicRules').innerHTML = S.rules.map(r=>`<span class="chip">${esc(r.reason)} <b>${eur(r.amount)}${r.per_minute?' /min':''}</b></span>`).join('') || '<div class="empty">Ainda sem tabela.</div>';
   if (S.admin){
-    $('fPlayer').innerHTML = '<option value="">Jogador...</option>'+S.players.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('');
-    $('fRule').innerHTML = '<option value="">Multa predefinida...</option>'+S.rules.map(r=>`<option value="${r.id}">${esc(r.reason)} (${eur(r.amount)})</option>`).join('');
-    $('rulesList').innerHTML = S.rules.map(r=>`<span class="chip">${esc(r.reason)} <b>${eur(r.amount)}</b><button data-delr="${r.id}">✕</button></span>`).join('');
+    $('fPlayer').innerHTML = '<option value="">Jogador...</option>'+S.players.filter(p=>p.active).map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('');
+    $('fRule').innerHTML = '<option value="">Multa predefinida...</option>'+S.rules.map(r=>`<option value="${r.id}">${esc(r.reason)} (${eur(r.amount)}${r.per_minute?' /min':''})</option>`).join('');
+    $('rulesList').innerHTML = S.rules.map(r=>`<span class="chip">${esc(r.reason)} <b>${eur(r.amount)}${r.per_minute?' /min':''}</b><button data-delr="${r.id}">✕</button></span>`).join('');
   }
 }
 
@@ -187,6 +188,7 @@ $('list').onclick = async e=>{
     if (b.dataset.pay) await sb.from('fines').update({paid:b.dataset.v!=='true'}).eq('id',b.dataset.pay);
     else if (b.dataset.del){ if(!confirm('Remover esta multa?'))return; await sb.from('fines').delete().eq('id',b.dataset.del); }
     else if (b.dataset.delp){ if(!confirm('Apagar jogador e todas as suas multas?'))return; await sb.from('players').delete().eq('id',b.dataset.delp); }
+    else if (b.dataset.act) await sb.from('players').update({active:b.dataset.v!=='true'}).eq('id',b.dataset.act);
     return load();
   }
   const row = e.target.closest('.p'); if(!row||e.target.closest('.fines'))return;
@@ -209,26 +211,32 @@ $('loginForm').onsubmit = async e=>{
   if (error){ $('loginMsg').textContent='Email ou password incorretos.'; return; }
   $('password').value=''; $('loginMsg').textContent=''; setAdmin(true);
 };
-$('fRule').onchange = ()=>{
-  const r=S.rules.find(x=>x.id===$('fRule').value); if(!r)return;
-  $('fReason').value=r.reason; $('fAmount').value=r.amount;
-};
+function calc(){
+  const r=S.rules.find(x=>x.id===$('fRule').value);
+  $('fMin').classList.toggle('hidden',!(r&&r.per_minute));
+  if(!r) return;
+  $('fReason').value=r.reason;
+  const k=r.per_minute?Number($('fMin').value||0):1;
+  $('fAmount').value=(r.amount*k*($('fGame').checked?2:1)).toFixed(2);
+}
+$('fRule').onchange=calc; $('fMin').oninput=calc;
+$('fGame').onchange=()=>{ if($('fRule').value) return calc(); const v=Number($('fAmount').value); if(v) $('fAmount').value=(v*($('fGame').checked?2:.5)).toFixed(2); };
 const msg = t=>{ $('adminMsg').textContent=t; };
 $('fineForm').onsubmit = async e=>{
   e.preventDefault();
-  const {error}=await sb.from('fines').insert({player_id:$('fPlayer').value,reason:$('fReason').value.trim(),amount:$('fAmount').value,date:$('fDate').value});
+  const {error}=await sb.from('fines').insert({player_id:$('fPlayer').value,reason:$('fReason').value.trim(),amount:$('fAmount').value,date:$('fDate').value,game_day:$('fGame').checked});
   if (error) return msg('Erro ao adicionar multa.');
-  msg(''); S.open.add($('fPlayer').value); $('fReason').value=''; $('fAmount').value=''; $('fRule').value=''; load();
+  msg(''); S.open.add($('fPlayer').value); $('fReason').value=''; $('fAmount').value=''; $('fRule').value=''; $('fGame').checked=false; $('fMin').value=''; $('fMin').classList.add('hidden'); load();
 };
 $('playerAddForm').onsubmit = async e=>{
   e.preventDefault();
-  const {error}=await sb.from('players').insert({name:$('pName').value.trim()});
+  const {error}=await sb.from('players').insert({name:$('pName').value.trim(),role:$('pRole').value,joined_on:new Date().toISOString().slice(0,10)});
   if (error) return msg('Erro (o nome já existe?).');
   msg(''); $('pName').value=''; load();
 };
 $('ruleForm').onsubmit = async e=>{
   e.preventDefault();
-  const {error}=await sb.from('rules').upsert({reason:$('rReason').value.trim(),amount:$('rAmount').value},{onConflict:'reason'});
+  const {error}=await sb.from('rules').upsert({reason:$('rReason').value.trim(),amount:$('rAmount').value,per_minute:$('rMin').checked},{onConflict:'reason'});
   if (error) return msg('Erro ao guardar multa predefinida.');
   msg(''); $('rReason').value=''; $('rAmount').value=''; load();
 };
@@ -264,6 +272,12 @@ $('exportBtn').onclick = ()=>{
   a.download='multas.csv'; a.click();
 };
 
+$('quotaBtn').onclick = async ()=>{
+  if (!confirm('Lançar a quota de 0,50 € desta semana a todos os ativos?')) return;
+  const {data,error}=await sb.rpc('lancar_quotas');
+  if (error) return msg('Erro a lançar quotas.');
+  msg(''); alert(data+' quota(s) lançada(s).'); load();
+};
 $('fDate').value = new Date().toISOString().slice(0,10);
 sb.auth.getSession().then(({data})=>{ if(data.session) setAdmin(true); });
 load();
