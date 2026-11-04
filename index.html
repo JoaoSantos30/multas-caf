@@ -138,7 +138,7 @@ label{font-size:.9rem;display:flex;gap:8px;align-items:center}label input{paddin
     <div class="stat"><b class="unpaid" id="sOwed">–</b><span>Em dívida</span></div>
     <div class="stat"><b class="paid" id="sPaid">–</b><span>Já recebido</span></div>
     <div class="stat"><b class="credit" id="sCredit">–</b><span>Saldo dos jogadores</span></div>
-    <div class="stat"><b id="sCount">–</b><span>Multas dadas</span></div>
+    <div class="stat"><b id="sCount">–</b><span>Total aplicado (multas + quotas)</span></div>
   </div>
 
   <div class="card" id="podiumCard"><h2>🏆 Pódio das multas</h2><div class="pod" id="podium"></div>
@@ -190,7 +190,7 @@ function model(){
     const asc=[...mine].sort((x,y)=>(x.date+(x.created_at||'')).localeCompare(y.date+(y.created_at||'')));
     let pool=totalP; const st={};
     asc.forEach(f=>{ const a=c(f.amount), used=Math.min(pool,a); pool-=used; st[f.id]={used,state:used>=a?'paid':used>0?'part':'open'}; });
-    return {p,mine,pays,st,owed:Math.max(0,-bal),credit:Math.max(0,bal),paid:totalP,multas:sumC(mine.filter(f=>f.kind==='multa'))};
+    return {p,mine,pays,st,owed:Math.max(0,-bal),credit:Math.max(0,bal),paid:totalP,multas:sumC(mine.filter(f=>f.kind==='multa')),quotas:sumC(mine.filter(f=>f.kind==='quota')),total:totalF};
   });
 }
 
@@ -206,7 +206,7 @@ function render(){
   $('sOwed').textContent = eurC(all.reduce((s,r)=>s+r.owed,0));
   $('sPaid').textContent = eurC(all.reduce((s,r)=>s+r.paid,0));
   $('sCredit').textContent = eurC(all.reduce((s,r)=>s+r.credit,0));
-  $('sCount').textContent = S.fines.length;
+  $('sCount').textContent = eurC(all.reduce((s,r)=>s+r.total,0));
 
   $('podium').innerHTML = pod.length ? [...pod].sort((x,y)=>x.rank-y.rank).map(r=>{const m=MEDALS[r.rank];
     return `<div class="pc r${r.rank}"><div class="big">${m[0]}${m[1]}</div><div class="t">${m[2]}</div><strong>${esc(r.p.name)}</strong><span class="v">${eurC(r.multas)}</span></div>`;}).join('')
@@ -220,7 +220,7 @@ function render(){
   $('list').innerHTML = rows.map((r,i)=>`
     <div class="p" data-id="${r.p.id}" style="${r.p.active?'':'opacity:.6'}">
       <div class="ph"><div class="rk">${i+1}</div>
-        <div class="nm"><strong>${esc(r.p.name)}</strong>${medal[r.p.id]?' '+MEDALS[medal[r.p.id]][1]:''}${r.p.role==='tecnico'?'<span class="tag">Treinador</span>':''}${r.p.active?'':'<span class="tag">Saiu</span>'}<br><small>${r.mine.length} multa(s) · pago ${eurC(r.paid)}</small>
+        <div class="nm"><strong>${esc(r.p.name)}</strong>${medal[r.p.id]?' '+MEDALS[medal[r.p.id]][1]:''}${r.p.role==='tecnico'?'<span class="tag">Treinador</span>':''}${r.p.active?'':'<span class="tag">Saiu</span>'}<br><small>Total ${eurC(r.total)} (multas ${eurC(r.multas)} + quotas ${eurC(r.quotas)}) · pago ${eurC(r.paid)}</small>
           <div class="bar"><i style="width:${r.owed/max*100}%"></i></div></div>
         <div class="amount ${r.owed>0?'unpaid':'paid'}">${r.owed>0?eurC(r.owed):(r.credit>0?`<span class="credit">+${eurC(r.credit)}</span><br><small>saldo</small>`:eurC(0))}${S.admin?`<br><button class="ghost small" data-act="${r.p.id}" data-v="${r.p.active}">${r.p.active?'Saiu':'Reativar'}</button> <button class="danger small" data-delp="${r.p.id}">Apagar</button>`:''}</div>
       </div>
@@ -368,5 +368,3 @@ load();
 </script>
 </body>
 </html>
-
-
