@@ -148,6 +148,7 @@ label{font-size:.9rem;display:flex;gap:8px;align-items:center}label input{paddin
     <h2>Plantel</h2>
     <div class="toolbar">
       <input id="search" placeholder="Pesquisar jogador...">
+      <select id="sort"><option value="multas">Mais multas</option><option value="owed">Mais em dívida</option></select>
       <select id="filter"><option value="all">Todos</option><option value="owing">Com dívida</option><option value="clear">Sem dívida</option></select>
     </div>
     <div id="list"><div class="empty">A carregar...</div></div>
@@ -214,14 +215,15 @@ function render(){
 
   const q = $('search').value.toLowerCase(), flt = $('filter').value;
   let rows = all.filter(r=>r.p.name.toLowerCase().includes(q) && (flt==='all' || (flt==='owing'?r.owed>0:r.owed===0)));
-  rows.sort((a,b)=>Number(b.p.active)-Number(a.p.active) || b.owed-a.owed || b.credit-a.credit || a.p.name.localeCompare(b.p.name));
-  const max = Math.max(1,...rows.map(r=>r.owed));
+  const key=$('sort').value==='owed'?'owed':'multas';
+  rows.sort((a,b)=>Number(b.p.active)-Number(a.p.active) || b[key]-a[key] || b.owed-a.owed || a.p.name.localeCompare(b.p.name));
+  const max = Math.max(1,...rows.map(r=>r[key]));
 
   $('list').innerHTML = rows.map((r,i)=>`
     <div class="p" data-id="${r.p.id}" style="${r.p.active?'':'opacity:.6'}">
       <div class="ph"><div class="rk">${i+1}</div>
         <div class="nm"><strong>${esc(r.p.name)}</strong>${medal[r.p.id]?' '+MEDALS[medal[r.p.id]][1]:''}${r.p.role==='tecnico'?'<span class="tag">Treinador</span>':''}${r.p.active?'':'<span class="tag">Saiu</span>'}<br><small>Total ${eurC(r.total)} (multas ${eurC(r.multas)} + quotas ${eurC(r.quotas)}) · pago ${eurC(r.paid)}</small>
-          <div class="bar"><i style="width:${r.owed/max*100}%"></i></div></div>
+          <div class="bar"><i style="width:${r[key]/max*100}%"></i></div></div>
         <div class="amount ${r.owed>0?'unpaid':'paid'}">${r.owed>0?eurC(r.owed):(r.credit>0?`<span class="credit">+${eurC(r.credit)}</span><br><small>saldo</small>`:eurC(0))}${S.admin?`<br><button class="ghost small" data-act="${r.p.id}" data-v="${r.p.active}">${r.p.active?'Saiu':'Reativar'}</button> <button class="danger small" data-delp="${r.p.id}">Apagar</button>`:''}</div>
       </div>
       ${S.open.has(r.p.id)?`<div class="fines">
@@ -259,7 +261,7 @@ $('list').onclick = async e=>{
   const row = e.target.closest('.p'); if(!row||e.target.closest('.fines'))return;
   S.open.has(row.dataset.id)?S.open.delete(row.dataset.id):S.open.add(row.dataset.id); render();
 };
-$('search').oninput = render; $('filter').onchange = render;
+$('search').oninput = render; $('filter').onchange = render; $('sort').onchange = render;
 
 // ---- Admin ----
 function setAdmin(on){
