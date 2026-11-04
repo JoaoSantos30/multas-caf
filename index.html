@@ -31,7 +31,7 @@ button.danger{background:var(--red);color:#fff}
 form{display:grid;gap:10px}
 .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 @media(max-width:560px){.row{grid-template-columns:1fr}}
-.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:14px}
 .stat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;text-align:center}
 .stat b{display:block;font-size:1.3rem}.stat span{color:var(--muted);font-size:.78rem}
 .toolbar{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
@@ -58,6 +58,15 @@ textarea{min-height:90px;font-family:monospace;font-size:.82rem}
 details summary{cursor:pointer;font-weight:600;margin-bottom:8px}
 .tag{font-size:.68rem;border:1px solid var(--line);border-radius:10px;padding:1px 7px;margin-left:6px;color:var(--muted);font-weight:500}
 label{font-size:.9rem;display:flex;gap:8px;align-items:center}label input{padding:0}
+.pod{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;align-items:end}
+@media(max-width:560px){.pod{grid-template-columns:1fr}}
+.pc{border:1px solid var(--line);border-radius:12px;padding:12px 8px;text-align:center}
+.pc.r1{border-color:var(--text);border-width:2px;padding-bottom:20px}
+.pc .big{font-size:2rem;line-height:1.1}.pc .t{font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+.pc strong{display:block;margin-top:4px}.pc .v{color:var(--red);font-weight:700}
+.credit{color:var(--green)}
+.pay{display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-top:1px dashed var(--line);font-size:.92rem}
+.note{font-size:.85rem;margin:8px 0;padding:8px 10px;border-radius:8px;background:var(--bg)}
 </style>
 </head>
 <body>
@@ -78,6 +87,17 @@ label{font-size:.9rem;display:flex;gap:8px;align-items:center}label input{paddin
 
   <!-- PAINEL ADMIN -->
   <div id="adminPanel" class="hidden">
+    <div class="card">
+      <h2>Registar pagamento</h2>
+      <form id="payForm">
+        <select id="payPlayer" required></select>
+        <div class="row"><input id="payAmount" type="number" step="0.01" min="0.01" placeholder="Valor entregue (€)" required>
+        <input id="payDate" type="date" required></div>
+        <input id="payNote" placeholder="Nota (opcional, ex: MB Way)">
+        <div class="note hidden" id="payPreview"></div>
+        <button>Registar pagamento</button>
+      </form>
+    </div>
     <div class="card">
       <h2>Adicionar multa</h2>
       <form id="fineForm">
@@ -117,8 +137,12 @@ label{font-size:.9rem;display:flex;gap:8px;align-items:center}label input{paddin
   <div class="stats">
     <div class="stat"><b class="unpaid" id="sOwed">–</b><span>Em dívida</span></div>
     <div class="stat"><b class="paid" id="sPaid">–</b><span>Já recebido</span></div>
+    <div class="stat"><b class="credit" id="sCredit">–</b><span>Saldo dos jogadores</span></div>
     <div class="stat"><b id="sCount">–</b><span>Multas dadas</span></div>
   </div>
+
+  <div class="card" id="podiumCard"><h2>🏆 Pódio das multas</h2><div class="pod" id="podium"></div>
+    <p style="margin:12px 0 0;font-size:.8rem;color:var(--muted)">Quem tem mais multas aplicadas esta época (sem quotas). Atualiza sozinho.</p></div>
 
   <div class="card">
     <h2>Plantel</h2>
@@ -139,50 +163,85 @@ const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const eur = n => Number(n).toLocaleString('pt-PT',{style:'currency',currency:'EUR'});
 const dt = d => new Date(d + 'T00:00:00').toLocaleDateString('pt-PT');
-let S = { players:[], fines:[], rules:[], admin:false, open:new Set() };
+let S = { players:[], fines:[], rules:[], payments:[], admin:false, open:new Set() };
 
 async function load(){
-  const [p,f,r] = await Promise.all([
+  const [p,f,r,py] = await Promise.all([
     sb.from('players').select('*').order('name'),
     sb.from('fines').select('*').order('date',{ascending:false}),
-    sb.from('rules').select('*').order('reason')
+    sb.from('rules').select('*').order('reason'),
+    sb.from('payments').select('*').order('date',{ascending:false})
   ]);
-  if (p.error||f.error||r.error){ $('list').innerHTML='<div class="empty">Erro a carregar dados. Verifica a configuração.</div>'; return; }
-  S.players=p.data; S.fines=f.data; S.rules=r.data;
+  if (p.error||f.error||r.error||py.error){ $('list').innerHTML='<div class="empty">Erro a carregar dados. Verifica a configuração.</div>'; return; }
+  S.players=p.data; S.fines=f.data; S.rules=r.data; S.payments=py.data;
   render();
 }
 
+const c = x=>Math.round(Number(x)*100);
+const eurC = n=>eur(n/100);
+const sumC = a=>a.reduce((s,f)=>s+c(f.amount),0);
+const MEDALS = {1:['🥇','👑','Rei das Multas'],2:['🥈','🤡','Vice-Rei'],3:['🥉','💸','Mealheiro']};
+
+function model(){
+  return S.players.map(p=>{
+    const mine=S.fines.filter(f=>f.player_id===p.id), pays=S.payments.filter(x=>x.player_id===p.id);
+    const totalF=sumC(mine), totalP=sumC(pays), bal=totalP-totalF;
+    // pagamentos abatem às multas mais antigas primeiro
+    const asc=[...mine].sort((x,y)=>(x.date+(x.created_at||'')).localeCompare(y.date+(y.created_at||'')));
+    let pool=totalP; const st={};
+    asc.forEach(f=>{ const a=c(f.amount), used=Math.min(pool,a); pool-=used; st[f.id]={used,state:used>=a?'paid':used>0?'part':'open'}; });
+    return {p,mine,pays,st,owed:Math.max(0,-bal),credit:Math.max(0,bal),paid:totalP,multas:sumC(mine.filter(f=>f.kind==='multa'))};
+  });
+}
+
+function podiumOf(all){
+  const el=all.filter(r=>r.p.active&&r.multas>0).sort((x,y)=>y.multas-x.multas||x.p.name.localeCompare(y.p.name));
+  const out=[]; el.forEach((r,i)=>{ const rank=el.findIndex(z=>z.multas===r.multas)+1; if(rank<=3) out.push({...r,rank}); });
+  return out;
+}
+
 function render(){
-  const sum = a => a.reduce((s,f)=>s+Number(f.amount),0);
-  $('sOwed').textContent = eur(sum(S.fines.filter(f=>!f.paid)));
-  $('sPaid').textContent = eur(sum(S.fines.filter(f=>f.paid)));
+  const all=model(), pod=podiumOf(all), medal={};
+  pod.forEach(r=>medal[r.p.id]=r.rank);
+  $('sOwed').textContent = eurC(all.reduce((s,r)=>s+r.owed,0));
+  $('sPaid').textContent = eurC(all.reduce((s,r)=>s+r.paid,0));
+  $('sCredit').textContent = eurC(all.reduce((s,r)=>s+r.credit,0));
   $('sCount').textContent = S.fines.length;
 
+  $('podium').innerHTML = pod.length ? [...pod].sort((x,y)=>x.rank-y.rank).map(r=>{const m=MEDALS[r.rank];
+    return `<div class="pc r${r.rank}"><div class="big">${m[0]}${m[1]}</div><div class="t">${m[2]}</div><strong>${esc(r.p.name)}</strong><span class="v">${eurC(r.multas)}</span></div>`;}).join('')
+    : '<div class="empty" style="grid-column:1/-1">Ainda ninguém no pódio. 😇</div>';
+
   const q = $('search').value.toLowerCase(), flt = $('filter').value;
-  let rows = S.players.map(p=>{
-    const mine = S.fines.filter(f=>f.player_id===p.id);
-    return { p, mine, owed:sum(mine.filter(f=>!f.paid)), paid:sum(mine.filter(f=>f.paid)) };
-  }).filter(r=>r.p.name.toLowerCase().includes(q) && (flt==='all' || (flt==='owing'?r.owed>0:r.owed===0)));
-  rows.sort((a,b)=>Number(b.p.active)-Number(a.p.active) || b.owed-a.owed || (b.paid-a.paid) || a.p.name.localeCompare(b.p.name));
+  let rows = all.filter(r=>r.p.name.toLowerCase().includes(q) && (flt==='all' || (flt==='owing'?r.owed>0:r.owed===0)));
+  rows.sort((a,b)=>Number(b.p.active)-Number(a.p.active) || b.owed-a.owed || b.credit-a.credit || a.p.name.localeCompare(b.p.name));
   const max = Math.max(1,...rows.map(r=>r.owed));
 
   $('list').innerHTML = rows.map((r,i)=>`
     <div class="p" data-id="${r.p.id}" style="${r.p.active?'':'opacity:.6'}">
       <div class="ph"><div class="rk">${i+1}</div>
-        <div class="nm"><strong>${esc(r.p.name)}</strong>${r.p.role==='tecnico'?'<span class="tag">Treinador</span>':''}${r.p.active?'':'<span class="tag">Saiu</span>'}<br><small>${r.mine.length} multa(s) · pago ${eur(r.paid)}</small>
+        <div class="nm"><strong>${esc(r.p.name)}</strong>${medal[r.p.id]?' '+MEDALS[medal[r.p.id]][1]:''}${r.p.role==='tecnico'?'<span class="tag">Treinador</span>':''}${r.p.active?'':'<span class="tag">Saiu</span>'}<br><small>${r.mine.length} multa(s) · pago ${eurC(r.paid)}</small>
           <div class="bar"><i style="width:${r.owed/max*100}%"></i></div></div>
-        <div class="amount ${r.owed>0?'unpaid':'paid'}">${eur(r.owed)}${S.admin?`<br><button class="ghost small" data-act="${r.p.id}" data-v="${r.p.active}">${r.p.active?'Saiu':'Reativar'}</button> <button class="danger small" data-delp="${r.p.id}">Apagar</button>`:''}</div>
+        <div class="amount ${r.owed>0?'unpaid':'paid'}">${r.owed>0?eurC(r.owed):(r.credit>0?`<span class="credit">+${eurC(r.credit)}</span><br><small>saldo</small>`:eurC(0))}${S.admin?`<br><button class="ghost small" data-act="${r.p.id}" data-v="${r.p.active}">${r.p.active?'Saiu':'Reativar'}</button> <button class="danger small" data-delp="${r.p.id}">Apagar</button>`:''}</div>
       </div>
-      ${S.open.has(r.p.id)?`<div class="fines">${r.mine.length?r.mine.map(f=>`
+      ${S.open.has(r.p.id)?`<div class="fines">
+        ${r.credit>0?`<div class="note">💰 Saldo a favor de <b>${eurC(r.credit)}</b>. É descontado automaticamente nas próximas multas.</div>`:''}
+        ${r.mine.length?r.mine.map(f=>{const x=r.st[f.id]||{state:'open',used:0};return `
         <div class="fine"><div class="info">${esc(f.reason)}${f.game_day?' ⚽×2':''}<br><small>${dt(f.date)}</small></div>
-          <div class="amount ${f.paid?'paid':'unpaid'}">${eur(f.amount)}<br><small>${f.paid?'Paga':'Por pagar'}</small></div>
-          ${S.admin?`<div class="actions"><button class="ghost small" data-pay="${f.id}" data-v="${f.paid}">${f.paid?'Desmarcar':'Paga'}</button><button class="danger small" data-del="${f.id}">✕</button></div>`:''}
-        </div>`).join(''):'<div class="empty">Sem multas 🎉</div>'}</div>`:''}
+          <div class="amount ${x.state==='paid'?'paid':'unpaid'}">${eur(f.amount)}<br><small>${x.state==='paid'?'Paga':x.state==='part'?'Parcial ('+eurC(x.used)+' pagos)':'Por pagar'}</small></div>
+          ${S.admin?`<div class="actions"><button class="danger small" data-del="${f.id}">✕</button></div>`:''}
+        </div>`;}).join(''):'<div class="empty">Sem multas 🎉</div>'}
+        ${r.pays.length?`<div style="margin-top:10px"><strong style="font-size:.85rem">Pagamentos</strong>${r.pays.map(y=>`
+          <div class="pay"><span>${dt(y.date)}${y.note?' · '+esc(y.note):''}</span><span><b class="paid">+${eur(y.amount)}</b>${S.admin?` <button class="danger small" data-delpay="${y.id}">✕</button>`:''}</span></div>`).join('')}</div>`:''}
+      </div>`:''}
     </div>`).join('') || '<div class="empty">Nenhum jogador encontrado.</div>';
 
   $('publicRules').innerHTML = S.rules.map(r=>`<span class="chip">${esc(r.reason)} <b>${eur(r.amount)}${r.per_minute?' /min':''}</b></span>`).join('') || '<div class="empty">Ainda sem tabela.</div>';
   if (S.admin){
+    const keepP=$('payPlayer').value;
     $('fPlayer').innerHTML = '<option value="">Jogador...</option>'+S.players.filter(p=>p.active).map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('');
+    $('payPlayer').innerHTML = '<option value="">Jogador...</option>'+all.map(r=>`<option value="${r.p.id}">${esc(r.p.name)}${r.owed>0?' (deve '+eurC(r.owed)+')':r.credit>0?' (saldo '+eurC(r.credit)+')':''}</option>`).join('');
+    $('payPlayer').value=keepP; payPreview();
     $('fRule').innerHTML = '<option value="">Multa predefinida...</option>'+S.rules.map(r=>`<option value="${r.id}">${esc(r.reason)} (${eur(r.amount)}${r.per_minute?' /min':''})</option>`).join('');
     $('rulesList').innerHTML = S.rules.map(r=>`<span class="chip">${esc(r.reason)} <b>${eur(r.amount)}${r.per_minute?' /min':''}</b><button data-delr="${r.id}">✕</button></span>`).join('');
   }
@@ -191,9 +250,9 @@ function render(){
 $('list').onclick = async e=>{
   const b = e.target.closest('button');
   if (b){
-    if (b.dataset.pay) await sb.from('fines').update({paid:b.dataset.v!=='true'}).eq('id',b.dataset.pay);
+    if (b.dataset.delpay){ if(!confirm('Remover este pagamento?'))return; await sb.from('payments').delete().eq('id',b.dataset.delpay); }
     else if (b.dataset.del){ if(!confirm('Remover esta multa?'))return; await sb.from('fines').delete().eq('id',b.dataset.del); }
-    else if (b.dataset.delp){ if(!confirm('Apagar jogador e todas as suas multas?'))return; await sb.from('players').delete().eq('id',b.dataset.delp); }
+    else if (b.dataset.delp){ if(!confirm('Apagar jogador, as suas multas e pagamentos?'))return; await sb.from('players').delete().eq('id',b.dataset.delp); }
     else if (b.dataset.act) await sb.from('players').update({active:b.dataset.v!=='true'}).eq('id',b.dataset.act);
     return load();
   }
@@ -228,6 +287,22 @@ function calc(){
 $('fRule').onchange=calc; $('fMin').oninput=calc;
 $('fGame').onchange=()=>{ if($('fRule').value) return calc(); const v=Number($('fAmount').value); if(v) $('fAmount').value=(v*($('fGame').checked?2:.5)).toFixed(2); };
 const msg = t=>{ $('adminMsg').textContent=t; };
+function payPreview(){
+  const box=$('payPreview'), id=$('payPlayer').value, v=c($('payAmount').value||0);
+  if(!id||!v){ box.classList.add('hidden'); return; }
+  const r=model().find(x=>x.p.id===id); if(!r) return;
+  const bal=r.credit-r.owed+v;
+  box.classList.remove('hidden');
+  box.innerHTML = (r.owed>0?`Dívida atual: <b>${eurC(r.owed)}</b>. `:r.credit>0?`Saldo atual: <b>${eurC(r.credit)}</b>. `:'')+
+    (bal>=0?`Depois deste pagamento: sem dívida${bal>0?' e <b class="credit">saldo de '+eurC(bal)+'</b>':''}.`:`Depois deste pagamento: ainda deve <b>${eurC(-bal)}</b>.`);
+}
+$('payPlayer').onchange=payPreview; $('payAmount').oninput=payPreview;
+$('payForm').onsubmit = async e=>{
+  e.preventDefault();
+  const {error}=await sb.from('payments').insert({player_id:$('payPlayer').value,amount:$('payAmount').value,date:$('payDate').value,note:$('payNote').value.trim()||null});
+  if (error) return msg('Erro ao registar pagamento.');
+  msg(''); S.open.add($('payPlayer').value); $('payAmount').value=''; $('payNote').value=''; load();
+};
 $('fineForm').onsubmit = async e=>{
   e.preventDefault();
   const {error}=await sb.from('fines').insert({player_id:$('fPlayer').value,reason:$('fReason').value.trim(),amount:$('fAmount').value,date:$('fDate').value,game_day:$('fGame').checked});
@@ -267,15 +342,18 @@ $('importForm').onsubmit = async e=>{
   if (names.length){ const {error}=await sb.from('players').insert(names.map(name=>({name}))); if(error) return msg('Erro a criar jogadores.'); }
   const {data:pl}=await sb.from('players').select('*');
   const rows=items.map(x=>({player_id:pl.find(p=>p.name.toLowerCase()===x.n.toLowerCase()).id,reason:x.r,amount:x.amount,date:x.date,paid:x.paid}));
-  const {error}=await sb.from('fines').insert(rows);
+  const {error}=await sb.from('fines').insert(rows.map(({paid,...f})=>f));
   if (error) return msg('Erro ao importar multas.');
+  const pays=rows.filter(r=>r.paid).map(r=>({player_id:r.player_id,amount:r.amount,date:r.date,note:'Importado: '+r.reason})).filter(r=>r.amount>0);
+  if (pays.length){ const {error:e2}=await sb.from('payments').insert(pays); if(e2) return msg('Multas importadas, mas erro nos pagamentos.'); }
   $('importText').value=''; msg(''); alert(rows.length+' multas importadas.'); load();
 };
 $('exportBtn').onclick = ()=>{
   const nm=id=>(S.players.find(p=>p.id===id)||{}).name||'';
-  const csv=['Nome;Motivo;Valor;Data;Paga',...S.fines.map(f=>[nm(f.player_id),f.reason,String(f.amount).replace('.',','),dt(f.date),f.paid?'s':'n'].join(';'))].join('\n');
-  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob(['\ufeff'+csv],{type:'text/csv'}));
-  a.download='multas.csv'; a.click();
+  const st={}; model().forEach(r=>Object.assign(st,r.st));
+  const dl=(name,csv)=>{ const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob(['\ufeff'+csv],{type:'text/csv'})); a.download=name; a.click(); };
+  dl('multas.csv',['Nome;Motivo;Valor;Data;Estado',...S.fines.map(f=>[nm(f.player_id),f.reason,String(f.amount).replace('.',','),dt(f.date),({paid:'paga',part:'parcial',open:'por pagar'})[(st[f.id]||{}).state||'open']].join(';'))].join('\n'));
+  dl('pagamentos.csv',['Nome;Valor;Data;Nota',...S.payments.map(y=>[nm(y.player_id),String(y.amount).replace('.',','),dt(y.date),y.note||''].join(';'))].join('\n'));
 };
 
 $('quotaBtn').onclick = async ()=>{
@@ -284,7 +362,7 @@ $('quotaBtn').onclick = async ()=>{
   if (error) return msg('Erro a lançar quotas.');
   msg(''); alert(data+' quota(s) lançada(s).'); load();
 };
-$('fDate').value = new Date().toISOString().slice(0,10);
+$('fDate').value = $('payDate').value = new Date().toISOString().slice(0,10);
 sb.auth.getSession().then(({data})=>{ if(data.session) setAdmin(true); });
 load();
 </script>
