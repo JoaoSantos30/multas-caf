@@ -142,13 +142,13 @@ label{font-size:.9rem;display:flex;gap:8px;align-items:center}label input{paddin
   </div>
 
   <div class="card" id="podiumCard"><h2>🏆 Pódio das multas</h2><div class="pod" id="podium"></div>
-    <p style="margin:12px 0 0;font-size:.8rem;color:var(--muted)">Quem tem mais multas aplicadas esta época (sem quotas). Atualiza sozinho.</p></div>
+    <p style="margin:12px 0 0;font-size:.8rem;color:var(--muted)">Quem tem o maior total aplicado esta época (multas + quotas). Atualiza sozinho.</p></div>
 
   <div class="card">
     <h2>Plantel</h2>
     <div class="toolbar">
       <input id="search" placeholder="Pesquisar jogador...">
-      <select id="sort"><option value="multas">Mais multas</option><option value="owed">Mais em dívida</option></select>
+      <select id="sort"><option value="total">Maior total (multas + quotas)</option><option value="owed">Mais em dívida</option></select>
       <select id="filter"><option value="all">Todos</option><option value="owing">Com dívida</option><option value="clear">Sem dívida</option></select>
     </div>
     <div id="list"><div class="empty">A carregar...</div></div>
@@ -196,8 +196,8 @@ function model(){
 }
 
 function podiumOf(all){
-  const el=all.filter(r=>r.p.active&&r.multas>0).sort((x,y)=>y.multas-x.multas||x.p.name.localeCompare(y.p.name));
-  const out=[]; el.forEach((r,i)=>{ const rank=el.findIndex(z=>z.multas===r.multas)+1; if(rank<=3) out.push({...r,rank}); });
+  const el=all.filter(r=>r.p.active&&r.total>0).sort((x,y)=>y.total-x.total||x.p.name.localeCompare(y.p.name));
+  const out=[]; el.forEach((r,i)=>{ const rank=el.findIndex(z=>z.total===r.total)+1; if(rank<=3) out.push({...r,rank}); });
   return out;
 }
 
@@ -210,12 +210,12 @@ function render(){
   $('sCount').textContent = eurC(all.reduce((s,r)=>s+r.total,0));
 
   $('podium').innerHTML = pod.length ? [...pod].sort((x,y)=>x.rank-y.rank).map(r=>{const m=MEDALS[r.rank];
-    return `<div class="pc r${r.rank}"><div class="big">${m[0]}${m[1]}</div><div class="t">${m[2]}</div><strong>${esc(r.p.name)}</strong><span class="v">${eurC(r.multas)}</span></div>`;}).join('')
+    return `<div class="pc r${r.rank}"><div class="big">${m[0]}${m[1]}</div><div class="t">${m[2]}</div><strong>${esc(r.p.name)}</strong><span class="v">${eurC(r.total)}</span></div>`;}).join('')
     : '<div class="empty" style="grid-column:1/-1">Ainda ninguém no pódio. 😇</div>';
 
   const q = $('search').value.toLowerCase(), flt = $('filter').value;
   let rows = all.filter(r=>r.p.name.toLowerCase().includes(q) && (flt==='all' || (flt==='owing'?r.owed>0:r.owed===0)));
-  const key=$('sort').value==='owed'?'owed':'multas';
+  const key=$('sort').value==='owed'?'owed':'total';
   rows.sort((a,b)=>Number(b.p.active)-Number(a.p.active) || b[key]-a[key] || b.owed-a.owed || a.p.name.localeCompare(b.p.name));
   const max = Math.max(1,...rows.map(r=>r[key]));
 
