@@ -227,7 +227,7 @@ const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const eur = n => Number(n).toLocaleString('pt-PT',{style:'currency',currency:'EUR'});
 const dt = d => new Date(d + 'T00:00:00').toLocaleDateString('pt-PT');
-const CATS=[['☕','Café e bebidas'],['🍖','Churrasco e jantares'],['🏆','Prémios'],['🧰','Material'],['📦','Outros']];
+const CATS=[['🍺','Bebidas'],['☕','Café'],['🍖','Churrascos'],['🧰','Material'],['🏆','Prémios']];
 const catIcon=n=>(CATS.find(c=>c[1]===n)||['🧾'])[0];
 let S = { players:[], fines:[], rules:[], payments:[], expenses:[], noExp:false, showAllExp:false, admin:false, open:new Set() };
 
