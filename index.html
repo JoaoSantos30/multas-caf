@@ -2,7 +2,7 @@
 <html lang="pt">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <link rel="icon" href="logo.png">
 <link rel="apple-touch-icon" href="logo.png">
 <meta name="theme-color" content="#000000">
@@ -12,14 +12,18 @@
 :root{--bg:#efefef;--card:#fff;--text:#111;--muted:#666;--line:#d9d9d9;--accent:#111;--gold:#111;--red:#b3261e;--green:#1e7a3c}
 @media (prefers-color-scheme:dark){:root{--bg:#0b0b0b;--card:#171717;--text:#f2f2f2;--muted:#999;--line:#2c2c2c;--accent:#f2f2f2;--gold:#f2f2f2;--red:#ff6b61;--green:#4cc27a}}
 *{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
 body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--text);line-height:1.45}
-header{background:#000;color:#fff;padding:16px;border-bottom:5px solid #fff;box-shadow:0 1px 0 #000}
+header{background:#000;color:#fff;padding:calc(16px + env(safe-area-inset-top)) calc(16px + env(safe-area-inset-right)) 16px calc(16px + env(safe-area-inset-left));border-bottom:5px solid #fff;box-shadow:0 1px 0 #000}
 .brand{display:flex;align-items:center;gap:14px}
 .brand img{width:56px;height:56px;border-radius:50%;border:2px solid #fff;background:#000;flex:none}
 header h1{letter-spacing:.5px;text-transform:uppercase}
 .hin{max-width:820px;margin:0 auto;display:flex;justify-content:space-between;align-items:center;gap:10px}
 header h1{margin:0;font-size:1.3rem}header p{margin:2px 0 0;color:#bbb;font-size:.85rem}
 main{max-width:820px;margin:0 auto;padding:16px}
+input:not([type=checkbox]),select,textarea{width:100%;min-width:0;max-width:100%;font-size:16px}
+input[type=date]{min-height:42px}
+.row>*{min-width:0}
 button,input,select,textarea{font:inherit;padding:9px 12px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--text)}
 button{cursor:pointer;background:var(--accent);color:var(--bg);border:none;font-weight:600}
 button.ghost{background:transparent;color:var(--text);border:1px solid var(--line)}
@@ -35,7 +39,7 @@ form{display:grid;gap:10px}
 .stat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;text-align:center}
 .stat b{display:block;font-size:1.3rem}.stat span{color:var(--muted);font-size:.78rem}
 .toolbar{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
-.toolbar input{flex:1;min-width:140px}
+.toolbar input{flex:1 1 100%}.toolbar select{flex:1 1 140px;width:auto}
 .p{border-top:1px solid var(--line);padding:10px 0;cursor:pointer}
 .p:first-child{border-top:none}
 .ph{display:flex;align-items:center;gap:10px}
@@ -54,12 +58,11 @@ form{display:grid;gap:10px}
 .rules{display:flex;flex-wrap:wrap;gap:8px}
 .chip{border:1px solid var(--line);border-radius:20px;padding:4px 12px;font-size:.85rem}
 .chip b{color:var(--text)}.chip button{padding:0 0 0 6px;background:none;color:var(--red);font-size:.9rem}
-textarea{min-height:90px;font-family:monospace;font-size:.82rem}
+textarea{min-height:90px;font-family:monospace}
 details summary{cursor:pointer;font-weight:600;margin-bottom:8px}
 .tag{font-size:.68rem;border:1px solid var(--line);border-radius:10px;padding:1px 7px;margin-left:6px;color:var(--muted);font-weight:500}
 label{font-size:.9rem;display:flex;gap:8px;align-items:center}label input{padding:0}
-.pod{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;align-items:end}
-@media(max-width:560px){.pod{grid-template-columns:1fr}}
+.pod{display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,1fr));gap:10px;align-items:end}
 .pc{border:1px solid var(--line);border-radius:12px;padding:12px 8px;text-align:center}
 .pc.r1{border-color:var(--text);border-width:2px;padding-bottom:20px}
 .pc .big{font-size:2rem;line-height:1.1}.pc .t{font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
@@ -67,6 +70,31 @@ label{font-size:.9rem;display:flex;gap:8px;align-items:center}label input{paddin
 .credit{color:var(--green)}
 .pay{display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-top:1px dashed var(--line);font-size:.92rem}
 .note{font-size:.85rem;margin:8px 0;padding:8px 10px;border-radius:8px;background:var(--bg)}
+.admtabs{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:12px}
+.admtabs button{display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 2px;font-size:.74rem;background:var(--card);color:var(--text);border:1px solid var(--line)}
+.admtabs button span{font-size:1.15rem;line-height:1}
+.admtabs button.on{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+.adm{display:flex;gap:8px;margin:8px 0 0 36px;cursor:default}
+.nm .sub{display:block;color:var(--muted);font-size:.78rem;line-height:1.35}
+.nm strong{overflow-wrap:anywhere}
+.stat b{font-size:clamp(1.05rem,4.6vw,1.3rem)}
+@media(max-width:560px){
+  main{padding:12px calc(12px + env(safe-area-inset-right)) 24px calc(12px + env(safe-area-inset-left))}
+  .card{padding:14px;border-radius:12px}
+  header{padding-bottom:12px}
+  .brand{gap:10px}.brand img{width:46px;height:46px}
+  header h1{font-size:1.05rem;line-height:1.15}header p{font-size:.74rem}
+  .stats{grid-template-columns:1fr 1fr;gap:8px}
+  .pc{padding:10px 4px}.pc.r1{padding-bottom:14px}.pc .big{font-size:1.5rem}.pc strong{font-size:.85rem;overflow-wrap:anywhere}.pc .t{font-size:.6rem}.pc .v{font-size:.85rem}
+  .rk{width:20px;font-size:.85rem}
+  .adm,.fines{margin-left:0}
+  .adm button{flex:1;min-height:38px}
+  .fine,.pay{font-size:.88rem}
+  button.small{padding:8px 12px;font-size:.8rem}
+  .actions button{min-width:38px}
+  details summary{padding:6px 0}
+  .chip{font-size:.8rem}
+}
 </style>
 </head>
 <body>
@@ -87,7 +115,13 @@ label{font-size:.9rem;display:flex;gap:8px;align-items:center}label input{paddin
 
   <!-- PAINEL ADMIN -->
   <div id="adminPanel" class="hidden">
-    <div class="card">
+    <div class="admtabs" id="admTabs">
+      <button data-t="fine"><span>➕</span>Multa</button>
+      <button data-t="pay"><span>💶</span>Pagamento</button>
+      <button data-t="mgmt"><span>⚙️</span>Gestão</button>
+      <button data-t="imp"><span>📥</span>Importar</button>
+    </div>
+    <div class="card apanel hidden" data-p="pay">
       <h2>Registar pagamento</h2>
       <form id="payForm">
         <select id="payPlayer" required></select>
@@ -98,7 +132,7 @@ label{font-size:.9rem;display:flex;gap:8px;align-items:center}label input{paddin
         <button>Registar pagamento</button>
       </form>
     </div>
-    <div class="card">
+    <div class="card apanel hidden" data-p="fine">
       <h2>Adicionar multa</h2>
       <form id="fineForm">
         <div class="row">
@@ -113,22 +147,22 @@ label{font-size:.9rem;display:flex;gap:8px;align-items:center}label input{paddin
         <button>Adicionar multa</button>
       </form>
     </div>
-    <div class="card">
-      <details><summary>Jogadores e tabela de multas</summary>
+    <div class="card apanel hidden" data-p="mgmt">
+      <h2>Jogadores e tabela de multas</h2><div>
         <button type="button" class="ghost" id="quotaBtn" style="margin-bottom:12px">Lançar quota desta semana (0,50 €)</button>
         <form id="playerAddForm"><div class="row"><input id="pName" placeholder="Nome" required><select id="pRole"><option value="jogador">Jogador</option><option value="tecnico">Treinador</option></select></div><button>Adicionar</button></form>
         <hr style="border:none;border-top:1px solid var(--line);margin:14px 0">
         <form id="ruleForm" class="row"><input id="rReason" placeholder="Novo tipo de multa" required>
           <div class="row"><input id="rAmount" type="number" step="0.01" min="0" placeholder="Valor (€)" required><button>Guardar</button></div><label><input type="checkbox" id="rMin"> Cobrado por minuto</label></form>
         <div class="rules" id="rulesList" style="margin-top:12px"></div>
-      </details>
+      </div>
     </div>
-    <div class="card">
-      <details><summary>Importar do Excel / Exportar</summary>
+    <div class="card apanel hidden" data-p="imp">
+      <h2>Importar do Excel / Exportar</h2><div>
         <p style="margin-top:0;font-size:.88rem;color:var(--muted)">Cola linhas do Excel com as colunas: <b>Nome, Motivo, Valor, Data, Paga (s/n)</b>. A data pode ser DD/MM/AAAA. Jogadores novos são criados automaticamente.</p>
         <form id="importForm"><textarea id="importText" placeholder="João Silva&#9;Atraso ao treino&#9;1&#9;12/10/2026&#9;n"></textarea>
         <div class="row"><button>Importar</button><button type="button" class="ghost" id="exportBtn">Exportar CSV</button></div></form>
-      </details>
+      </div>
     </div>
     <div class="msg" id="adminMsg"></div>
   </div>
@@ -148,7 +182,7 @@ label{font-size:.9rem;display:flex;gap:8px;align-items:center}label input{paddin
     <h2>Plantel</h2>
     <div class="toolbar">
       <input id="search" placeholder="Pesquisar jogador...">
-      <select id="sort"><option value="total">Maior total (multas + quotas)</option><option value="owed">Mais em dívida</option></select>
+      <select id="sort"><option value="total">Maior total</option><option value="owed">Mais em dívida</option></select>
       <select id="filter"><option value="all">Todos</option><option value="owing">Com dívida</option><option value="clear">Sem dívida</option></select>
     </div>
     <div id="list"><div class="empty">A carregar...</div></div>
@@ -222,10 +256,11 @@ function render(){
   $('list').innerHTML = rows.map((r,i)=>`
     <div class="p" data-id="${r.p.id}" style="${r.p.active?'':'opacity:.6'}">
       <div class="ph"><div class="rk">${i+1}</div>
-        <div class="nm"><strong>${esc(r.p.name)}</strong>${medal[r.p.id]?' '+MEDALS[medal[r.p.id]][1]:''}${r.p.role==='tecnico'?'<span class="tag">Treinador</span>':''}${r.p.active?'':'<span class="tag">Saiu</span>'}<br><small>Total ${eurC(r.total)} (multas ${eurC(r.multas)} + quotas ${eurC(r.quotas)}) · pago ${eurC(r.paid)}</small>
+        <div class="nm"><strong>${esc(r.p.name)}</strong>${medal[r.p.id]?' '+MEDALS[medal[r.p.id]][1]:''}${r.p.role==='tecnico'?'<span class="tag">Treinador</span>':''}${r.p.active?'':'<span class="tag">Saiu</span>'}<span class="sub"><b>Total ${eurC(r.total)}</b> · pago ${eurC(r.paid)}</span><span class="sub">multas ${eurC(r.multas)} + quotas ${eurC(r.quotas)}</span>
           <div class="bar"><i style="width:${r[key]/max*100}%"></i></div></div>
-        <div class="amount ${r.owed>0?'unpaid':'paid'}">${r.owed>0?eurC(r.owed):(r.credit>0?`<span class="credit">+${eurC(r.credit)}</span><br><small>saldo</small>`:eurC(0))}${S.admin?`<br><button class="ghost small" data-act="${r.p.id}" data-v="${r.p.active}">${r.p.active?'Saiu':'Reativar'}</button> <button class="danger small" data-delp="${r.p.id}">Apagar</button>`:''}</div>
+        <div class="amount ${r.owed>0?'unpaid':'paid'}">${r.owed>0?eurC(r.owed):(r.credit>0?`<span class="credit">+${eurC(r.credit)}</span><br><small>saldo</small>`:eurC(0))}</div>
       </div>
+      ${S.admin?`<div class="adm"><button class="ghost small" data-act="${r.p.id}" data-v="${r.p.active}">${r.p.active?'Marcar como saiu':'Reativar'}</button><button class="danger small" data-delp="${r.p.id}">Apagar</button></div>`:''}
       ${S.open.has(r.p.id)?`<div class="fines">
         ${r.credit>0?`<div class="note">💰 Saldo a favor de <b>${eurC(r.credit)}</b>. É descontado automaticamente nas próximas multas.</div>`:''}
         ${r.mine.length?r.mine.map(f=>{const x=r.st[f.id]||{state:'open',used:0};return `
@@ -258,14 +293,21 @@ $('list').onclick = async e=>{
     else if (b.dataset.act) await sb.from('players').update({active:b.dataset.v!=='true'}).eq('id',b.dataset.act);
     return load();
   }
-  const row = e.target.closest('.p'); if(!row||e.target.closest('.fines'))return;
+  const row = e.target.closest('.p'); if(!row||e.target.closest('.fines')||e.target.closest('.adm'))return;
   S.open.has(row.dataset.id)?S.open.delete(row.dataset.id):S.open.add(row.dataset.id); render();
 };
 $('search').oninput = render; $('filter').onchange = render; $('sort').onchange = render;
 
 // ---- Admin ----
+let curTab=null;
+function setTab(t){
+  curTab=t;
+  document.querySelectorAll('.apanel').forEach(p=>p.classList.toggle('hidden',p.dataset.p!==t));
+  document.querySelectorAll('#admTabs button').forEach(b=>b.classList.toggle('on',b.dataset.t===t));
+}
+$('admTabs').onclick=e=>{ const b=e.target.closest('button'); if(b) setTab(curTab===b.dataset.t?null:b.dataset.t); };
 function setAdmin(on){
-  S.admin=on; $('adminPanel').classList.toggle('hidden',!on); $('loginCard').classList.add('hidden');
+  S.admin=on; if(on&&curTab===null&&window.innerWidth>=700) setTab('fine'); if(!on) setTab(null); $('adminPanel').classList.toggle('hidden',!on); $('loginCard').classList.add('hidden');
   $('adminBtn').textContent = on?'Sair':'Admin'; render();
 }
 $('adminBtn').onclick = async ()=>{
