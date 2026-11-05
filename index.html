@@ -175,6 +175,7 @@ label{font-size:.9rem;display:flex;gap:8px;align-items:center}label input{paddin
       <h2>Registar despesa da caixinha</h2>
       <form id="expForm">
         <select id="eCat" required></select>
+        <input id="eCustom" class="hidden" placeholder="Nome da nova categoria (ex: Transporte)" maxlength="40">
         <input id="eDesc" placeholder="O quê / onde (ex: Café no jogo vs Sertã)" required>
         <div class="row"><input id="eAmount" type="number" step="0.01" min="0.01" placeholder="Valor (€)" required>
         <input id="eDate" type="date" required></div>
@@ -294,7 +295,13 @@ function renderCash(all){
     ${S.expenses.length>8?`<button class="ghost small" id="expMore" style="margin-top:8px;width:100%">${S.showAllExp?'Ver menos':'Ver todas ('+S.expenses.length+')'}</button>`:''}`
     : '<div class="empty">Ainda não há despesas registadas.</div>';
   const mb=$('expMore'); if(mb) mb.onclick=()=>{S.showAllExp=!S.showAllExp;render();};
-  if(S.admin){ const keep=$('eCat').value; $('eCat').innerHTML=CATS.map(c=>`<option>${c[1]}</option>`).join(''); if(keep) $('eCat').value=keep; ePreview(recebido-gasto); }
+  if(S.admin){
+    const keep=$('eCat').value, known=CATS.map(c=>c[1]);
+    const extra=[...new Set(S.expenses.map(e=>e.category))].filter(n=>n&&!known.includes(n)).sort();
+    $('eCat').innerHTML=[...known,...extra].map(n=>`<option value="${esc(n)}">${catIcon(n)} ${esc(n)}</option>`).join('')+'<option value="__other">➕ Outra categoria…</option>';
+    if(keep) $('eCat').value=keep; if(!$('eCat').value) $('eCat').selectedIndex=0;
+    ePreview(recebido-gasto);
+  }
 }
 function render(){
   const all=model(), pod=podiumOf(all), medal={};
@@ -481,12 +488,15 @@ function ePreview(caixa){
   const novo=caixa-v; box.classList.remove('hidden');
   box.innerHTML=`Caixa atual <b>${eurC(caixa)}</b>. Depois desta despesa: <b class="${novo<0?'unpaid':'paid'}">${eurC(novo)}</b>${novo<0?' (negativa)':''}.`;
 }
+$('eCat').onchange=()=>{ const o=$('eCat').value==='__other'; $('eCustom').classList.toggle('hidden',!o); $('eCustom').required=o; if(o) $('eCustom').focus(); };
 $('eAmount').oninput=()=>{ const all=model(); ePreview(all.reduce((s,r)=>s+r.paid,0)-sumC(S.expenses)); };
 $('expForm').onsubmit = async e=>{
   e.preventDefault();
-  const {error}=await sb.from('expenses').insert({category:$('eCat').value,description:$('eDesc').value.trim(),amount:$('eAmount').value,date:$('eDate').value});
+  const cat=$('eCat').value==='__other'?$('eCustom').value.trim():$('eCat').value;
+  if(!cat) return msg('Escreve o nome da categoria.');
+  const {error}=await sb.from('expenses').insert({category:cat,description:$('eDesc').value.trim(),amount:$('eAmount').value,date:$('eDate').value});
   if (error) return msg(S.noExp?'A tabela de despesas não existe. Corre o despesas.sql no Supabase.':'Erro ao registar despesa.');
-  msg(''); $('eDesc').value=''; $('eAmount').value=''; load();
+  msg(''); $('eDesc').value=''; $('eAmount').value=''; $('eCustom').value=''; load();
 };
 $('fDate').value = $('payDate').value = $('eDate').value = new Date().toISOString().slice(0,10);
 sb.auth.getSession().then(({data})=>{ if(data.session) setAdmin(true); });
