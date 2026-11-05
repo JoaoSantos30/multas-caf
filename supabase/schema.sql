@@ -100,7 +100,8 @@ revoke execute on function public.lancar_quotas(date) from public, anon;
 grant execute on function public.lancar_quotas(date) to authenticated;
 
 -- Lançamento automático: segunda-feira às 00:05 UTC.
--- Requer a extensão pg_cron ativa no Supabase.
+create extension if not exists pg_cron;
+
 select cron.schedule(
   'lancar-quotas-semanal',
   '5 0 * * 1',

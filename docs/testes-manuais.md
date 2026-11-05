@@ -1,6 +1,6 @@
 # Testes manuais
 
-Segue esta lista depois de cada alteração. A base de dados é a real, por isso usa sempre um jogador de teste e apaga-o no fim.
+Segue esta lista depois de cada alteração. A base de dados é a real, por isso usa sempre o jogador de teste e apaga-o no fim.
 
 ## Vista pública
 
@@ -11,17 +11,23 @@ Segue esta lista depois de cada alteração. A base de dados é a real, por isso
 
 ## Preparação
 
+- [ ] Aponta o valor "Disponível em caixa".
 - [ ] Entra como admin. Uma password errada deve mostrar "Email ou password incorretos."
 - [ ] Em Gestão, adiciona o jogador `Teste Apagar`.
 
 ## Multas e pagamentos
 
 - [ ] Adiciona uma multa de 10 € ao jogador de teste. Deve dever 10,00 €.
-- [ ] Marca "Dia de jogo" numa multa predefinida. O valor deve dobrar.
-- [ ] Remove a multa de dia de jogo.
-- [ ] Regista um pagamento de 4 €. A multa deve ficar "Parcial (4,00 € pagos)" e a dívida em 6,00 €.
+- [ ] Escolhe uma multa predefinida, marca "Dia de jogo" e confirma que o valor dobra. Adiciona-a ao jogador de teste e remove-a a seguir com ✕.
+- [ ] Em Pagamento, escolhe o jogador de teste e escreve 4 €. Antes de gravar, a pré-visualização deve dizer que ainda deve 6,00 €.
+- [ ] Regista o pagamento. A multa deve ficar "Parcial (4,00 € pagos)".
 - [ ] Regista um pagamento de 8 €. A multa deve ficar "Paga" e o saldo em +2,00 €.
-- [ ] Confirma que a pré-visualização do pagamento bate certo antes de gravar.
+- [ ] Remove o pagamento de 8 € com ✕. A multa deve voltar a "Parcial (4,00 € pagos)".
+
+## Estado do jogador
+
+- [ ] Carrega em "Marcar como saiu". O jogador deve ficar com a etiqueta "Saiu".
+- [ ] Carrega em "Reativar". A etiqueta deve desaparecer.
 
 ## Tabela de multas e despesas
 
@@ -32,19 +38,25 @@ Segue esta lista depois de cada alteração. A base de dados é a real, por isso
 
 ## Importar e exportar
 
-- [ ] Importa a linha abaixo, separando os campos com tabulações: `Teste Apagar`, `Teste importação`, `1`, `05/11/2026`, `n`.
-- [ ] Importa uma linha inválida. Deve aparecer "Linhas inválidas" e nada deve ser importado.
+- [ ] Importa exatamente esta linha: `Teste Apagar;Teste importação;1;05/11/2026;n`.
+- [ ] Importa exatamente esta linha: `Teste Apagar;sem valor`. Deve aparecer "Linhas inválidas" e nada deve ser importado.
 - [ ] Carrega em "Exportar CSV". Devem descarregar três ficheiros.
+
+## Sessão expirada
+
+- [ ] Abre o site num segundo separador e carrega em "Sair" nesse separador.
+- [ ] Sem atualizar o primeiro separador, tenta apagar uma multa do jogador de teste. Deve aparecer um aviso a dizer que não foi possível guardar, e a multa deve continuar lá.
+- [ ] Atualiza a página e entra outra vez como admin. O aviso deve desaparecer.
 
 ## Quotas
 
-- [ ] Carrega em "Lançar quota manualmente". Se a quota da semana já tiver sido lançada a todos, deve dizer "0 quota(s) lançada(s)".
-- [ ] Na primeira semana depois de cada alteração às quotas, confirma à segunda-feira que a "Quota semanal" apareceu sozinha.
+**Atenção:** só faças o primeiro passo se a "Quota semanal" desta semana já aparecer nos jogadores. Caso contrário, lanças quotas reais a toda a equipa.
 
-Se a quota manual criar uma quota para o jogador de teste, ela desaparece ao apagá-lo.
+- [ ] Carrega em "Lançar quota manualmente". Deve dizer "0 quota(s) lançada(s)". À segunda-feira pode dizer 1, por causa do jogador de teste, que desaparece ao apagá-lo.
+- [ ] Depois de ativar as quotas automáticas ou de as alterar, confirma na segunda-feira seguinte que a "Quota semanal" apareceu sozinha.
 
 ## Limpeza
 
-- [ ] Apaga o jogador `Teste Apagar` e confirma que as multas e os pagamentos dele desapareceram.
-- [ ] Confirma que a caixa voltou ao valor inicial.
+- [ ] Pesquisa `Teste Apagar` e apaga esse jogador. As multas e os pagamentos dele devem desaparecer.
+- [ ] Confirma que a caixa voltou ao valor apontado na preparação.
 - [ ] Sai da conta de admin.

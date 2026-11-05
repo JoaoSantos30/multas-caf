@@ -31,9 +31,9 @@ Por isso, o registo de novas contas tem de ficar **desativado** em Authenticatio
 
 ## Quotas semanais
 
-A função `lancar_quotas` cria uma quota de 0,50 € para cada jogador ativo que já tenha entrado na equipa nessa semana.
+A função `lancar_quotas` cria uma quota de 0,50 € para cada jogador ativo que tenha entrado na equipa até à segunda-feira dessa semana. Quem entra a meio da semana só paga a partir da semana seguinte.
 
-- **Automático:** a tarefa `lancar-quotas-semanal`, do `pg_cron`, corre à segunda-feira às 00:05 UTC.
+- **Automático:** a tarefa `lancar-quotas-semanal`, do `pg_cron`, corre à segunda-feira às 00:05 UTC. A ativação está explicada em [Publicação](publicacao.md#ativar-as-quotas-automáticas).
 - **Manual:** o botão "Lançar quota manualmente" fica disponível para o admin, em Gestão, e serve apenas de recurso. Só lança a semana atual.
 - **Sem repetições:** o índice `one_quota_per_week` impede duas quotas para o mesmo jogador na mesma semana.
 - **Permissões:** a função ignora o RLS, por isso só utilizadores com login a podem executar.

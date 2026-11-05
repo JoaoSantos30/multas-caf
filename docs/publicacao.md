@@ -27,3 +27,26 @@ curl -s https://cdn.jsdelivr.net/npm/@supabase/supabase-js@VERSAO/dist/umd/supab
 
 3. Atualiza o atributo `integrity` para `sha384-` seguido desse valor.
 4. Segue a lista de testes manuais.
+
+## Ativar as quotas automáticas
+
+Isto só é preciso fazer uma vez, no Supabase:
+
+1. Em **Database > Extensions**, procura `pg_cron` e ativa.
+2. No **SQL Editor**, confirma se já existe alguma tarefa:
+
+```sql
+select jobname, schedule, command, active from cron.job;
+```
+
+3. Se não houver nenhuma tarefa de quotas, cria-a:
+
+```sql
+select cron.schedule(
+  'lancar-quotas-semanal',
+  '5 0 * * 1',
+  $$select public.lancar_quotas();$$
+);
+```
+
+4. Corre outra vez a consulta do passo 2. Deve aparecer `lancar-quotas-semanal`, com `active` a `true`.

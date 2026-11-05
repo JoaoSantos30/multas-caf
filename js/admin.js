@@ -25,6 +25,7 @@ function setTab(tab) {
 /** Liga ou desliga o modo de administrador. */
 export function setAdmin(on) {
   state.admin = on;
+  showMessage('');
   if (on && currentTab === null && window.innerWidth >= DESKTOP_MIN_WIDTH) setTab('fine');
   if (!on) setTab(null);
   $('adminPanel').classList.toggle('hidden', !on);
@@ -35,6 +36,8 @@ export function setAdmin(on) {
 
 async function finishWrite(ok) {
   showMessage(ok ? '' : WRITE_FAILED);
+  // Os botões da lista ficam longe da mensagem, sobretudo no telemóvel.
+  if (!ok) alert(WRITE_FAILED);
   await refresh();
 }
 
