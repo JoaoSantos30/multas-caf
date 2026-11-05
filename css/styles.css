@@ -103,3 +103,11 @@ label{font-size:.9rem;display:flex;gap:8px;align-items:center}label input{paddin
 .rules-admin{margin-top:12px}
 .hint{margin-top:0;font-size:.88rem;color:var(--muted)}
 .footnote{margin:12px 0 0;font-size:.8rem;color:var(--muted)}
+.cash-big-tight{padding-bottom:8px}
+.exp-title{margin:8px 0 4px;font-size:.9rem}
+.exp-title-gap{margin-top:14px}
+.more-btn{margin-top:8px;width:100%}
+.empty-full{grid-column:1/-1}
+.p.gone{opacity:.6}
+.pays{margin-top:10px}
+.pays-title{font-size:.85rem}
